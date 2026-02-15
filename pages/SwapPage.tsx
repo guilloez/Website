@@ -8,6 +8,17 @@ import { mainnet } from 'wagmi/chains';
 
 type AssetId = (typeof ASSET_OPTIONS)[number]['id'];
 
+const TOKEN_THEME: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+  eth: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', icon: 'Ξ' },
+  usdt: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', icon: '₮' },
+  usdc: { bg: 'bg-sky-500/20', text: 'text-sky-400', border: 'border-sky-500/30', icon: '$' },
+  pyusd: { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', icon: 'P' },
+  usdp: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: 'Ᵽ' },
+  dai: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', icon: '◈' },
+};
+
+const getTheme = (id: string) => TOKEN_THEME[id] || { bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30', icon: '?' };
+
 const SwapPage: React.FC = () => {
   const { address, isConnected, chain } = useAccount();
   const [fromAssetId, setFromAssetId] = useState<AssetId>('usdt');
@@ -194,87 +205,101 @@ const SwapPage: React.FC = () => {
 
           <div className="space-y-2 relative">
             {/* From — sell token */}
-            <div className="border border-white/10 bg-white/[0.02] p-5 hover:border-white/20 transition-all">
-              <div className="flex justify-between items-center mb-3">
+            <div className="border border-white/10 bg-white/[0.02] p-5 hover:border-white/20 transition-all rounded-sm">
+              <div className="flex justify-between items-center mb-4">
                 <button
                   type="button"
                   onClick={() => {
                     setFromModalOpen(true);
                     setToModalOpen(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 bg-black border border-white/10 hover:border-[#00f2ff]/30 transition-all min-w-[140px]"
+                  className={`flex items-center gap-2.5 pl-2 pr-4 py-2 bg-black/80 border ${getTheme(fromAsset.id).border} hover:border-[#00f2ff]/40 transition-all rounded-full group`}
                 >
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                      fromAsset.id === 'eth' ? 'bg-[#00f2ff]/30 text-[#00f2ff]' : 'bg-purple-500/30 text-purple-300'
-                    }`}
-                  >
-                    {fromAsset.symbol.slice(0, 2)}
+                  <div className={`w-8 h-8 rounded-full ${getTheme(fromAsset.id).bg} border ${getTheme(fromAsset.id).border} flex items-center justify-center text-sm font-black ${getTheme(fromAsset.id).text} shrink-0 group-hover:scale-110 transition-transform`}>
+                    {getTheme(fromAsset.id).icon}
                   </div>
-                  <span className="text-[10px] font-black text-white uppercase">{fromAsset.symbol}</span>
-                  <span className="text-slate-500 ml-auto">▾</span>
+                  <span className="text-sm font-black text-white">{fromAsset.symbol}</span>
+                  <svg className="w-3 h-3 text-slate-500 ml-1" viewBox="0 0 12 12" fill="none"><path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
                 </button>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">You pay</span>
               </div>
               <div className="flex justify-between items-end gap-2">
-                <span className="text-xs font-bold text-[#00f2ff] tracking-widest shrink-0">FROM</span>
                 <input
                   type="text"
                   value={fromAmount}
                   onChange={(e) => setFromAmount(e.target.value)}
-                  placeholder="0"
-                  className="bg-transparent text-right text-3xl font-black text-white w-full focus:outline-none tracking-tighter placeholder:text-slate-600"
+                  placeholder="0.00"
+                  className="bg-transparent text-left text-3xl font-black text-white w-full focus:outline-none tracking-tight placeholder:text-slate-700"
                 />
+                <button
+                  type="button"
+                  onClick={() => setFromAmount(fromBalanceFormatted)}
+                  className="text-[10px] font-bold text-[#00f2ff]/60 hover:text-[#00f2ff] transition-colors uppercase tracking-wider shrink-0 px-2 py-1 border border-[#00f2ff]/10 hover:border-[#00f2ff]/30 rounded-sm"
+                >
+                  MAX
+                </button>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-[10px] text-slate-600">&nbsp;</span>
+                <span className="text-[10px] text-slate-500 font-bold tabular-nums">
+                  Balance: {displayMaxBalance} {fromAsset.symbol}
+                </span>
               </div>
               {exceedsBalance && (
-                <p className="text-[10px] text-red-500 font-bold mt-2 uppercase tracking-wider">
-                  Max amount is {displayMaxBalance} {fromAsset.symbol}
+                <p className="text-[10px] text-red-500 font-bold mt-1 uppercase tracking-wider">
+                  ⚠ Exceeds available balance
                 </p>
               )}
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-black border border-white/10 flex items-center justify-center rounded-full tech-glow cursor-pointer hover:border-[#00f2ff]/50 transition-all group">
-              <span className="text-xs group-hover:text-[#00f2ff] transition-colors">↓</span>
+            {/* Swap direction arrow */}
+            <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+              <div className="w-10 h-10 bg-[#0a0a0a] border border-white/10 flex items-center justify-center rounded-full cursor-pointer hover:border-[#00f2ff]/50 hover:bg-[#00f2ff]/5 transition-all group shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                <svg className="w-4 h-4 text-slate-400 group-hover:text-[#00f2ff] transition-colors" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 3V13M8 13L4 9M8 13L12 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             </div>
 
             {/* To — buy / output token (to vault) */}
-            <div className="border border-white/10 bg-white/[0.02] p-5 hover:border-white/20 transition-all">
-              <div className="flex justify-between items-center mb-3">
+            <div className="border border-white/10 bg-white/[0.02] p-5 hover:border-white/20 transition-all rounded-sm">
+              <div className="flex justify-between items-center mb-4">
                 <button
                   type="button"
                   onClick={() => {
                     setToModalOpen(true);
                     setFromModalOpen(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 bg-black border border-white/10 hover:border-[#00f2ff]/30 transition-all min-w-[140px]"
+                  className={`flex items-center gap-2.5 pl-2 pr-4 py-2 bg-black/80 border ${getTheme(toAsset.id).border} hover:border-[#00f2ff]/40 transition-all rounded-full group`}
                 >
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                      toAsset.id === 'eth' ? 'bg-[#00f2ff]/30 text-[#00f2ff]' : 'bg-purple-500/30 text-purple-300'
-                    }`}
-                  >
-                    {toAsset.symbol.slice(0, 2)}
+                  <div className={`w-8 h-8 rounded-full ${getTheme(toAsset.id).bg} border ${getTheme(toAsset.id).border} flex items-center justify-center text-sm font-black ${getTheme(toAsset.id).text} shrink-0 group-hover:scale-110 transition-transform`}>
+                    {getTheme(toAsset.id).icon}
                   </div>
-                  <span className="text-[10px] font-black text-white uppercase">{toAsset.symbol}</span>
-                  <span className="text-slate-500 ml-auto">▾</span>
+                  <span className="text-sm font-black text-white">{toAsset.symbol}</span>
+                  <svg className="w-3 h-3 text-slate-500 ml-1" viewBox="0 0 12 12" fill="none"><path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
                 </button>
-                <span className="text-[9px] font-bold text-[#00f2ff]/70 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-[#00f2ff]/50 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00f2ff]/30 animate-pulse"></span>
                   To Vault
                 </span>
               </div>
               <div className="flex justify-between items-end">
-                <span className="text-xs font-bold text-slate-500 tracking-widest">OUT</span>
                 <input
                   type="text"
                   readOnly
                   value={isDirectDeposit ? toAmount : '—'}
-                  className="bg-transparent text-right text-3xl font-black text-slate-400 w-full focus:outline-none tracking-tighter"
+                  className="bg-transparent text-left text-3xl font-black text-slate-400 w-full focus:outline-none tracking-tight"
                 />
               </div>
-              {!isDirectDeposit && (
-                <p className="text-[9px] text-amber-500/80 mt-1 uppercase tracking-widest">
-                  Select same asset to deposit
-                </p>
-              )}
+              <div className="mt-2">
+                {!isDirectDeposit ? (
+                  <p className="text-[10px] text-amber-500/80 uppercase tracking-widest flex items-center gap-1">
+                    <span>⚠</span> Select same asset to deposit
+                  </p>
+                ) : (
+                  <span className="text-[10px] text-slate-600">You receive</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -298,14 +323,12 @@ const SwapPage: React.FC = () => {
                   role="switch"
                   aria-checked={customAddressEnabled}
                   onClick={() => setCustomAddressEnabled(!customAddressEnabled)}
-                  className={`w-10 h-5 rounded-full relative border transition-colors ${
-                    customAddressEnabled ? 'bg-[#00f2ff]/30 border-[#00f2ff]/50' : 'bg-slate-800 border-white/10'
-                  }`}
+                  className={`w-10 h-5 rounded-full relative border transition-colors ${customAddressEnabled ? 'bg-[#00f2ff]/30 border-[#00f2ff]/50' : 'bg-slate-800 border-white/10'
+                    }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-slate-400 transition-all ${
-                      customAddressEnabled ? 'left-5' : 'left-0.5'
-                    }`}
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-slate-400 transition-all ${customAddressEnabled ? 'left-5' : 'left-0.5'
+                      }`}
                   />
                 </button>
               </div>
@@ -377,12 +400,14 @@ const SwapPage: React.FC = () => {
         onClose={() => setFromModalOpen(false)}
         title="Select sell token"
         onSelect={setFromAssetId}
+        selectedId={fromAssetId}
       />
       <TokenSelectModal
         isOpen={toModalOpen}
         onClose={() => setToModalOpen(false)}
         title="Select buy token"
         onSelect={setToAssetId}
+        selectedId={toAssetId}
       />
     </div>
   );
