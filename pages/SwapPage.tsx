@@ -377,10 +377,7 @@ const SwapPage: React.FC = () => {
                 <span className="text-slate-600">Est. time:</span>
                 <span className="text-slate-400">10s</span>
               </div>
-              <div className="flex justify-between text-[10px] font-bold tracking-widest uppercase">
-                <span className="text-slate-600">Total fee:</span>
-                <span className="text-slate-400">$0.08</span>
-              </div>
+
               <div className="flex justify-between text-[10px] font-bold tracking-widest uppercase">
                 <span className="text-slate-600">Pay fee in:</span>
                 <span className="text-[#00f2ff]">{fromAsset.symbol}</span>
