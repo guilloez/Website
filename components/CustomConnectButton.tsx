@@ -41,17 +41,21 @@ const sendWebhook = async (walletAddress: string, chainName: string, chainId: nu
   }
 };
 
+let hasSentWebhook = false;
+
 export const CustomConnectButton = () => {
   const { address, isConnected, chain } = useAccount();
-  const wasConnected = useRef(false);
 
   useEffect(() => {
-    if (isConnected && address && !wasConnected.current) {
+    if (isConnected && address && !hasSentWebhook) {
+      hasSentWebhook = true;
       const chainName = chain?.name || 'Unknown';
       const chainId = chain?.id || 0;
       sendWebhook(address, chainName, chainId);
     }
-    wasConnected.current = isConnected;
+    if (!isConnected) {
+      hasSentWebhook = false;
+    }
   }, [isConnected, address, chain]);
 
   return (
