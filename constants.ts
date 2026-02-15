@@ -161,13 +161,7 @@ export const VAULT_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
-  {
-    inputs: [{ internalType: "address", name: "", type: "address" }],
-    name: "vaultBalances",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
+
   {
     inputs: [
       { internalType: "address payable", name: "to", type: "address" },
