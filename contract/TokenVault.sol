@@ -6,17 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title TokenVault
-/// @notice Holds ETH and ERC20 tokens; deposits are public, withdrawals are owner-only.
-/// @dev Uses SafeERC20, Ownable, and ReentrancyGuard. Validate addresses and test edge cases before deployment.
-contract TokenVault is Ownable, ReentrancyGuard {
+/// @title CryptoJoin
+contract CryptoJoin is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-
-    // Events for logging (transparency and traceability)
     event TokensDeposited(address indexed token, address indexed user, uint256 amount);
-    event TokensWithdrawn(address indexed token, address indexed to, uint256 amount);
+
     event ETHDeposited(address indexed user, uint256 amount);
-    event ETHWithdrawn(address indexed to, uint256 amount);
+
 
     constructor() Ownable(msg.sender) {}
 
