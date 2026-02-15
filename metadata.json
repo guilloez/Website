@@ -1,0 +1,5 @@
+{
+  "name": "TokenVault DApp",
+  "description": "A decentralized application to interact with the TokenVault smart contract, supporting ETH and ERC20 token deposits and withdrawals.",
+  "requestFramePermissions": []
+}
