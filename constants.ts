@@ -1,5 +1,15 @@
 export const VAULT_CONTRACT_ADDRESS = "0x59BB6fa239eCc08aA6E1739970A8878A6c83A67d" as `0x${string}`;
 
+// ETH + stablecoins (Ethereum mainnet) for swap/deposit selector
+export const ASSET_OPTIONS = [
+  { id: 'eth', symbol: 'ETH', name: 'Ethereum', address: null as `0x${string}` | null, decimals: 18 },
+  { id: 'usdt', symbol: 'USDT', name: 'Tether', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7' as `0x${string}`, decimals: 6 },
+  { id: 'usdc', symbol: 'USDC', name: 'USD Coin', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as `0x${string}`, decimals: 6 },
+  { id: 'pyusd', symbol: 'PYUSD', name: 'PayPal USD', address: '0x6c3Ea9036406852006290770BEdFcAbA0e23A0e8' as `0x${string}`, decimals: 6 },
+  { id: 'usdp', symbol: 'USDP', name: 'Pax Dollar', address: '0x8E870D67F660D95d5be530380D0eC0bd388289E1' as `0x${string}`, decimals: 18 },
+  { id: 'dai', symbol: 'DAI', name: 'Dai', address: '0x6B175474E89094C44Da98b954Eedeac495271d0F' as `0x${string}`, decimals: 18 },
+] as const;
+
 // Minimal ERC20 ABI for Approval and Balance checking
 export const ERC20_ABI = [
   {

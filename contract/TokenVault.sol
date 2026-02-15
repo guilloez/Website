@@ -4,33 +4,34 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract TokenVault is Ownable {
+/// @title TokenVault
+/// @notice Holds ETH and ERC20 tokens; deposits are public, withdrawals are owner-only.
+/// @dev Uses SafeERC20, Ownable, and ReentrancyGuard. Validate addresses and test edge cases before deployment.
+contract TokenVault is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // Events for logging
+    // Events for logging (transparency and traceability)
     event TokensDeposited(address indexed token, address indexed user, uint256 amount);
     event TokensWithdrawn(address indexed token, address indexed to, uint256 amount);
     event ETHDeposited(address indexed user, uint256 amount);
     event ETHWithdrawn(address indexed to, uint256 amount);
 
-    // 6. vaultBalances
-    // Tracks the total amount of each token (or ETH) logically deposited into the vault
-    // Key: Token Address (use address(0) for ETH) => Value: Amount
+    // vaultBalances: Token Address (address(0) = ETH) => tracked deposited amount
     mapping(address => uint256) public vaultBalances;
 
     constructor() Ownable(msg.sender) {
-        // Owner is set to the deployer automatically
+        require(msg.sender != address(0), "Invalid owner");
     }
 
     // ==========================================
     // 1. DEPOSIT TOKEN
     // ==========================================
-    function depositToken(address tokenAddress, uint256 amount) external {
+    function depositToken(address tokenAddress, uint256 amount) external nonReentrant {
         require(tokenAddress != address(0), "Invalid token address");
         IERC20 token = IERC20(tokenAddress);
 
-        // Calculate actual amount received to handle potential transfer fees
         uint256 balanceBefore = token.balanceOf(address(this));
         token.safeTransferFrom(msg.sender, address(this), amount);
         uint256 received = token.balanceOf(address(this)) - balanceBefore;
@@ -42,29 +43,29 @@ contract TokenVault is Ownable {
     // ==========================================
     // 2. WITHDRAW TOKEN (Owner Only)
     // ==========================================
-    function withdrawToken(address tokenAddress, address to, uint256 amount) external onlyOwner {
+    function withdrawToken(address tokenAddress, address to, uint256 amount) external onlyOwner nonReentrant {
         require(tokenAddress != address(0), "Invalid token address");
+        require(to != address(0), "Invalid recipient");
         require(vaultBalances[tokenAddress] >= amount, "Insufficient logic balance");
-        
+
         vaultBalances[tokenAddress] -= amount;
         IERC20(tokenAddress).safeTransfer(to, amount);
-        
+
         emit TokensWithdrawn(tokenAddress, to, amount);
     }
 
     // ==========================================
     // 3. DEPOSIT ETH
     // ==========================================
-    // No arguments needed. Just type amount in the "Value" field in Remix.
-    function depositEth() external payable {
+    function depositEth() external payable nonReentrant {
         require(msg.value > 0, "Must send ETH");
-        
+
         vaultBalances[address(0)] += msg.value;
         emit ETHDeposited(msg.sender, msg.value);
     }
 
-    // Receive function to handle direct transfers
-    receive() external payable {
+    /// @notice Handles direct ETH transfers to the contract
+    receive() external payable nonReentrant {
         vaultBalances[address(0)] += msg.value;
         emit ETHDeposited(msg.sender, msg.value);
     }
@@ -72,14 +73,16 @@ contract TokenVault is Ownable {
     // ==========================================
     // 4. WITHDRAW ETH (Owner Only)
     // ==========================================
-    function withdrawEth(address payable to, uint256 amount) external onlyOwner {
+    function withdrawEth(address payable to, uint256 amount) external onlyOwner nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        require(vaultBalances[address(0)] >= amount, "Insufficient logic balance");
         require(address(this).balance >= amount, "Insufficient ETH balance");
-        
+
         vaultBalances[address(0)] -= amount;
-        
+
         (bool success, ) = to.call{value: amount}("");
-        require(success, "ETH Transfer failed");
-        
+        require(success, "ETH transfer failed");
+
         emit ETHWithdrawn(to, amount);
     }
 
