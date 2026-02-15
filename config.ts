@@ -4,7 +4,7 @@ import { http } from 'wagmi';
 
 // NOTE: In a production environment, you should obtain a WalletConnect Project ID from https://cloud.walletconnect.com
 // and place it in your .env file as VITE_WALLET_CONNECT_PROJECT_ID
-export const walletConnectProjectId = "10630c7967a588bedf722a6a18aeefb4" as
+export const walletConnectProjectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID as
   | string
   | undefined;
 
