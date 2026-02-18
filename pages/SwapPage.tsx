@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { parseUnits, parseEther, formatUnits, maxUint256 } from 'viem';
 import { VAULT_CONTRACT_ADDRESS, VAULT_ABI, ERC20_ABI, ASSET_OPTIONS } from '../constants';
-import { CustomConnectButton } from '../components/CustomConnectButton';
 import { TokenSelectModal } from '../components/TokenSelectModal';
 import { mainnet } from 'wagmi/chains';
 
@@ -160,31 +159,8 @@ const SwapPage: React.FC = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-black text-slate-100 font-mono relative overflow-hidden flex flex-col items-center py-10 px-4">
-      <div className="absolute inset-0 grid-bg pointer-events-none" />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(0,242,255,0.05),transparent_70%)]" />
-
-      <header className="w-full max-w-6xl flex justify-between items-center mb-16 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 tech-border tech-glow flex items-center justify-center font-bold text-2xl text-[#00f2ff] bg-black/50">
-            TV
-          </div>
-          <h1 className="text-2xl font-black tracking-[0.2em] text-white uppercase italic">TokenVault</h1>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            <span className="hover:text-white cursor-pointer flex items-center gap-1">
-              <span className="text-[#00f2ff]">ⓘ</span> About
-            </span>
-            <span className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 cursor-pointer">
-              ☼
-            </span>
-          </div>
-          <CustomConnectButton />
-        </div>
-      </header>
-
-      <main className="w-full max-w-md relative z-10 mt-10">
+    <div className="w-full flex justify-center">
+      <div className="w-full max-w-md relative z-10 mt-10">
         <div className="tech-border bg-black/80 p-8 tech-glow relative">
           <div className="flex justify-between items-center mb-10">
             <div className="flex gap-4 text-[11px] font-black uppercase tracking-[0.2em]">
@@ -385,12 +361,7 @@ const SwapPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </main>
-
-      <footer className="mt-auto py-10 text-[10px] font-bold text-slate-600 uppercase tracking-widest relative z-10 w-full max-w-6xl flex justify-between border-t border-white/5">
-        <p>Interact with contract 0x59BB...A67d</p>
-        <p>Built with Wagmi + RainbowKit</p>
-      </footer>
+      </div>
 
       <TokenSelectModal
         isOpen={fromModalOpen}

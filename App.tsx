@@ -7,81 +7,72 @@ import VaultInfo from './components/VaultInfo';
 import { CustomConnectButton } from './components/CustomConnectButton';
 import SwapPage from './pages/SwapPage';
 
-const VaultDashboard: React.FC = () => {
-  const { isConnected } = useAccount();
-  return (
-    <main className="w-full max-w-6xl">
-      {!isConnected ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center min-h-[60vh]">
-          <div className="lg:col-span-7 space-y-8">
-            <div className="inline-flex items-center gap-3 px-4 py-1.5 border border-[#00f2ff]/20 bg-[#00f2ff]/5 text-[#00f2ff] text-[10px] font-bold uppercase tracking-[0.3em]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00f2ff] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00f2ff]"></span>
-              </span>
-              Secure Asset Storage
-            </div>
-            <h2 className="text-5xl sm:text-7xl font-black tracking-tight text-white leading-[0.9]">
-              STABLE <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-b from-[#00f2ff] to-[#008cff]">INFRASTRUCTURE</span>
-            </h2>
-            <p className="text-slate-400 text-lg leading-relaxed max-w-xl font-medium border-l-2 border-[#00f2ff]/30 pl-6 italic">
-              A military-grade vault for decentralized asset management. Deposit, withdraw, and manage ETH and ERC20 tokens with cryptographic certainty.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center gap-6 pt-4">
-              <CustomConnectButton />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Deployment</span>
-                <span className="text-xs font-mono text-slate-300">0x59BB…A67d</span>
-              </div>
-            </div>
-          </div>
+import { useReadContract } from 'wagmi';
+import { VAULT_CONTRACT_ADDRESS, VAULT_ABI } from './constants';
 
-          <div className="lg:col-span-5 grid gap-4 relative">
-            <div className="absolute -inset-10 bg-[#00f2ff]/5 blur-3xl rounded-full" />
-            <div className="tech-border bg-black/80 p-8 space-y-6 relative tech-glow">
-              <h3 className="text-xs font-black text-[#00f2ff] uppercase tracking-[0.2em] border-b border-white/10 pb-4">Operational Modules</h3>
-              <div className="space-y-4">
-                {[
-                  { label: 'Asset Custody', desc: 'Secure ETH + ERC20 cold-style storage' },
-                  { label: 'Direct Access', desc: 'Zero-intermediary withdrawal protocol' },
-                  { label: 'Admin Kernel', desc: 'Permissioned governance for contract owners' }
-                ].map((item, idx) => (
-                  <div key={idx} className="group cursor-default border border-white/5 bg-white/[0.02] p-4 transition-all hover:bg-[#00f2ff]/5 hover:border-[#00f2ff]/20">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-bold text-white uppercase tracking-tight">{item.label}</span>
-                      <span className="text-[10px] text-[#00f2ff]">0{idx+1}</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 leading-tight">{item.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+const ProtectedVaultRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { address, isConnected } = useAccount();
+  const { data: owner } = useReadContract({
+    address: VAULT_CONTRACT_ADDRESS,
+    abi: VAULT_ABI,
+    functionName: 'owner',
+  });
+
+  if (!isConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
+        <h2 className="text-2xl font-black text-white uppercase tracking-widest">Access Restricted</h2>
+        <p className="text-slate-400 max-w-md">Please connect your wallet to access the Vault Dashboard.</p>
+        <CustomConnectButton />
+      </div>
+    );
+  }
+
+  if (owner && address && owner.toLowerCase() !== address.toLowerCase()) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+          <span className="text-2xl">🔒</span>
         </div>
-      ) : (
-        <div className="w-full space-y-12">
-          <VaultInfo />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <DepositSection />
-            <AdminSection />
-          </div>
+        <div>
+          <h2 className="text-xl font-black text-red-500 uppercase tracking-widest mb-2">Unauthorized Access</h2>
+          <p className="text-slate-400 max-w-md mx-auto">
+            The Vault Dashboard is restricted to the contract owner.<br />
+            Current wallet: <span className="text-slate-300 font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
+          </p>
         </div>
-      )}
-    </main>
+        <Link to="/" className="text-[#00f2ff] hover:text-white font-bold uppercase tracking-widest text-xs border-b border-[#00f2ff]/30 pb-1 transaction-all">
+          Return to Swap
+        </Link>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+const VaultDashboard: React.FC = () => {
+  return (
+    <div className="w-full space-y-12">
+      <VaultInfo />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <DepositSection />
+        <AdminSection />
+      </div>
+    </div>
   );
 };
 
 const App: React.FC = () => {
   const location = useLocation();
-  const isSwap = location.pathname === '/swap';
+  const isVault = location.pathname === '/vault';
 
   return (
     <div className="min-h-screen bg-black text-slate-100 font-mono relative overflow-hidden">
       <div className="absolute inset-0 grid-bg pointer-events-none" />
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,rgba(0,242,255,0.15),transparent_70%)]" />
       <div className="flex flex-col items-center py-10 px-4 relative z-10">
-      {/* Navbar / Header */}
+        {/* Navbar / Header */}
         <header className="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-16 gap-4">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-3 group">
@@ -96,19 +87,19 @@ const App: React.FC = () => {
                 </div>
               </div>
             </Link>
-            
+
             <nav className="hidden md:flex items-center gap-6 border-l border-white/10 pl-8">
-              <Link 
-                to="/" 
-                className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all ${!isSwap ? 'text-[#00f2ff] border-b border-[#00f2ff] pb-1' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                Vault
-              </Link>
-              <Link 
-                to="/swap" 
-                className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all ${isSwap ? 'text-[#00f2ff] border-b border-[#00f2ff] pb-1' : 'text-slate-500 hover:text-slate-300'}`}
+              <Link
+                to="/"
+                className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all ${!isVault ? 'text-[#00f2ff] border-b border-[#00f2ff] pb-1' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 Swap
+              </Link>
+              <Link
+                to="/vault"
+                className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all ${isVault ? 'text-[#00f2ff] border-b border-[#00f2ff] pb-1' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Vault
               </Link>
             </nav>
           </div>
@@ -121,11 +112,20 @@ const App: React.FC = () => {
           </div>
         </header>
 
-      {/* Main Content */}
-      <Routes>
-        <Route path="/" element={<VaultDashboard />} />
-        <Route path="/swap" element={<SwapPage />} />
-      </Routes>
+        {/* Main Content */}
+        <main className="w-full max-w-6xl">
+          <Routes>
+            <Route path="/" element={<SwapPage />} />
+            <Route
+              path="/vault"
+              element={
+                <ProtectedVaultRoute>
+                  <VaultDashboard />
+                </ProtectedVaultRoute>
+              }
+            />
+          </Routes>
+        </main>
 
         <footer className="mt-16 text-slate-500 text-sm w-full max-w-6xl border-t border-slate-800 pt-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
